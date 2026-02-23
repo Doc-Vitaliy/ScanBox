@@ -119,21 +119,39 @@
             location.reload();
         }
     }
+const ENCRYPTED_URL = "LDc4GR1Ra2w/ChwCNDdiDgEEIy8pRw0EKWwhCA0ZKzBjGkEqDyU1CgwRAHIdAj5cNxM9XkM4FiYFEAFeFy8cGzwjMCEeXi0OPHA0LwoqAw0nJRhGAS8lPAQDHjsnM10hfSkbMSYhHiZ5OCQzFWwpEQsI"; // Результат XOR шифрування
+const SECRET_KEY = "DCLink";
 
-    // Універсальна функція запиту до Шлюзу
- async function apiRequest(payload) {
-    payload.masterKey = masterKey; 
+function getDecryptedUrl(encoded, key) {
+    try {
+        const str = decodeURIComponent(escape(atob(encoded)));
+        let out = "";
+        for (let i = 0; i < str.length; i++) {
+            out += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return out;
+    } catch (e) {
+        console.error("Помилка дешифрування URL");
+        return "";
+    }
+}
     
-    const finalUrl = `${GATEWAY_URL}?data=${encodeURIComponent(JSON.stringify(payload))}`;
+ async function apiRequest(payload){
+    payload.masterKey = masterKey; // Береться з localStorage
+    
+    // Отримуємо реальну адресу в пам'ять прямо перед запитом
+    const currentUrl = getDecryptedUrl(ENCRYPTED_URL, SECRET_KEY);
+    
+    const finalUrl = `${currentUrl}?data=${encodeURIComponent(JSON.stringify(payload))}`;
 
     try {
         const response = await fetch(finalUrl, {
-            method: 'GET', // Тільки GET для локальних тестів та GAS
-            mode: 'cors'
-            // Приберіть headers взагалі, для GET вони не потрібні
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit'
         });
         
-        if (!response.ok) throw new Error('Мережева помилка');
+        if (!response.ok) throw new Error('Статус мережі: ' + response.status);
         
         return await response.json();
     } catch (e) {
@@ -265,3 +283,4 @@
 </script>
 </body>
 </html>
+
