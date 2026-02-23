@@ -261,21 +261,35 @@
             return;
         }
 
-        status.innerText = "⏳ Відправка...";
-        try {
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({ mode: currentMode, data: processedData })
-            });
-            status.innerText = "✅ Успішно надіслано!";
-            scans = [];
-            updateUI();
-        } catch (e) { 
-            alert("Помилка мережі!"); 
-            status.innerText = "";
-        }
+       status.innerText = "⏳ Відправка...";
+try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+            mode: currentMode, 
+            data: processedData 
+        })
+    });
+
+    const result = await response.json();
+
+    if (result.status === "success") {
+        status.innerText = "✅ Успішно надіслано!";
+        scans = [];
+        updateUI();
+    } else {
+        status.innerText = "❌ Помилка: " + result.message;
+    }
+
+} catch (e) {
+    alert("Помилка мережі!");
+    status.innerText = "";
+}
     }
 </script>
 </body>
 </html>
+
