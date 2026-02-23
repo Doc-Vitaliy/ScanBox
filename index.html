@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Скан Термінал 📦</title>
+    <title>Скан Термінал 📦 (Secure)</title>
     <style>
         :root { --main-blue: #0056b3; --error-red: #dc3545; }
         body { font-family: sans-serif; background-color: #f0f4f8; padding: 10px; margin: 0; }
         .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-        
         h1 { text-align: center; font-size: 1.8rem; color: var(--main-blue); margin-top: 0; margin-bottom: 20px; }
         
-        /* Секція конфігурації (перший запуск) */
-        #configArea { background: #fffbe6; border: 2px dashed #ffe58f; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: none; }
-        #configArea p { margin-top: 0; font-weight: bold; color: #856404; }
-
+        /* Секція Майстер-пароля */
+        #configArea { background: #e6f7ff; border: 2px dashed #91d5ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: none; text-align: center; }
+        
         .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
         input { flex-grow: 1; padding: 15px; border: 2px solid #ccc; border-radius: 8px; font-size: 20px; outline: none; width: 100%; box-sizing: border-box; }
         input:focus { border-color: var(--main-blue); }
@@ -25,28 +23,14 @@
         .btn-green { background: #28a745; color: white; width: 100%; margin-top: 15px; font-size: 20px; }
         .btn-green:disabled { background: #ccc; cursor: not-allowed; }
 
-        /* Елементи списку */
-        .scan-list { margin-top: 15px; border-top: 2px solid #eee; max-height: 450px; overflow-y: auto; }
+        .scan-list { margin-top: 15px; border-top: 2px solid #eee; max-height: 400px; overflow-y: auto; }
         .scan-item { display: flex; align-items: center; padding: 12px 5px; border-bottom: 2px solid #f0f0f0; font-size: 1.3rem; }
-        .scan-index { width: 45px; color: #888; font-weight: bold; flex-shrink: 0; }
+        .scan-index { width: 40px; color: #888; font-weight: bold; }
         .scan-info { flex-grow: 1; display: flex; justify-content: space-between; margin-right: 15px; font-family: monospace; }
-        
-        /* Великий хрестик видалення */
-        .delete-btn { 
-            color: var(--error-red); 
-            background: #fff1f0; 
-            border: 2px solid #ffa39e; 
-            padding: 5px 15px; 
-            cursor: pointer; 
-            font-size: 30px; 
-            border-radius: 8px; 
-            line-height: 1; 
-            font-weight: bold;
-        }
+        .delete-btn { color: var(--error-red); background: #fff1f0; border: 2px solid #ffa39e; padding: 5px 15px; cursor: pointer; font-size: 25px; border-radius: 8px; }
 
-        #errorDisplay { display: none; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 1.1rem; line-height: 1.4; }
-        .status-msg { text-align: center; font-weight: bold; margin: 10px 0; font-size: 1.1rem; min-height: 24px; }
-        #counterLabel { text-align: right; color: #666; font-weight: bold; margin-bottom: 5px; font-size: 1rem; }
+        #errorDisplay { display: none; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .status-msg { text-align: center; font-weight: bold; margin: 10px 0; min-height: 24px; }
     </style>
 </head>
 <body>
@@ -55,9 +39,9 @@
     <h1>Скан Термінал 🟦📦</h1>
 
     <div id="configArea">
-        <p>⚠️ Система не налаштована.</p>
-        <input type="password" id="apiUrlInput" placeholder="Вставте URL вашого скрипта...">
-        <button class="btn-blue" style="margin-top:12px" onclick="saveConfig()">ПІДКЛЮЧИТИ БАЗУ</button>
+        <p><b>🔑 Введіть ключ доступу до системи</b></p>
+        <input type="password" id="masterKeyInput" placeholder="Master Key">
+        <button class="btn-blue" style="margin-top:12px" onclick="saveMasterKey()">УВІЙТИ В СИСТЕМУ</button>
     </div>
 
     <div id="loginArea" style="display:none">
@@ -66,7 +50,7 @@
             <input type="password" id="passwordInput" placeholder="Пароль" style="margin-top: 10px;">
             <button class="btn-blue" style="margin-top: 15px;" onclick="login()">УВІЙТИ</button>
         </div>
-        <div id="loginStatus" style="text-align: center; color: red; margin-top: 10px; font-weight: bold;"></div>
+        <div id="loginStatus" class="status-msg" style="color: red;"></div>
     </div>
 
     <div id="mainArea" style="display:none;">
@@ -76,8 +60,8 @@
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <span id="userLabel" style="font-size: 1.2rem; font-weight: bold;">📦</span>
-            <button onclick="clearAllData()" style="padding: 8px 15px; background: #6c757d; font-size: 14px; color: white;">Вийти / Скинути</button>
+            <span id="userLabel" style="font-size: 1.1rem; font-weight: bold;">📦</span>
+            <button onclick="logout()" style="padding: 8px 12px; background: #6c757d; font-size: 12px; color: white; border-radius: 5px;">Скинути все</button>
         </div>
 
         <div class="input-row">
@@ -85,105 +69,112 @@
             <button class="btn-blue" style="width: 70px;" onclick="handleScan()">+</button>
         </div>
         
-        <div id="counterLabel">Всього: 0</div>
+        <div id="counterLabel" style="text-align: right; font-weight: bold; color: #666;">Всього: 0</div>
         <div id="errorDisplay"></div>
         <div id="statusLabel" class="status-msg"></div>
 
         <div class="scan-list" id="scanList"></div>
-        
         <button id="processBtn" class="btn-green" onclick="submitData()" disabled>ОБРОБИТИ ВСЕ</button>
     </div>
 </div>
 
 <script>
-   // 1. Спробуємо взяти URL з пам'яті або з параметрів посилання
-    let GOOGLE_SCRIPT_URL = localStorage.getItem('api_url') || "";
-    
+    // ВСТАВТЕ СЮДИ URL ВАШОГО СКРИПТА-ШЛЮЗА (№1)
+    // Розбиваємо URL, щоб боти не бачили цілий рядок
+    const _p1 = "https://script.google.com/";
+    const _p2 = "macros/s/AKfycbyQDS5OHQe9iBEdYd1sDF9rfv6IzTdBcldc0xQeSbd1-2xnmxUy5n_MyThJTsCUh_J5aw";
+    const _p3 = "/exec";
+
+    const GATEWAY_URL = _p1 + _p2 + _p3;
     let scans = [];
     let currentMode = 'Відправка';
     let currentUser = "";
+    let masterKey = localStorage.getItem('master_key') || "";
 
-    // Ініціалізація при завантаженні
     window.onload = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiParam = urlParams.get('api');
-
-        // Якщо в посиланні є ?api=..., зберігаємо його
-        if (apiParam) {
-            const fullUrl = `https://script.google.com/macros/s/${apiParam}/exec`;
-            localStorage.setItem('api_url', fullUrl);
-            GOOGLE_SCRIPT_URL = fullUrl;
-            // Очищуємо адресу в браузері для краси (прибираємо хвіст ?api=...)
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        if (!GOOGLE_SCRIPT_URL) {
-            // Якщо посилання немає ні в пам'яті, ні в параметрах
+        if (!masterKey) {
             document.getElementById('configArea').style.display = 'block';
         } else {
-            // Якщо все налаштовано — показуємо логін
-            document.getElementById('configArea').style.display = 'none';
-            document.getElementById('loginArea').style.display = 'block';
+            showLogin();
         }
     };
 
-    // Очищення налаштувань (кнопка "Вийти / Скинути")
-    function clearAllData() {
-        if(confirm("Вийти з акаунту та скинути налаштування підключення?")) {
-            localStorage.removeItem('api_url');
+    function saveMasterKey() {
+        const val = document.getElementById('masterKeyInput').value.trim();
+        if (val) {
+            masterKey = val;
+            localStorage.setItem('master_key', val);
+            showLogin();
+        }
+    }
+
+    function showLogin() {
+        document.getElementById('configArea').style.display = 'none';
+        document.getElementById('loginArea').style.display = 'block';
+    }
+
+    function logout() {
+        if(confirm("Очистити ключ доступу та вийти?")) {
+            localStorage.clear();
             location.reload();
         }
     }
 
-    // Авторизація
-    async function login() {
-    const user = document.getElementById('usernameInput').value.trim();
-    const pass = document.getElementById('passwordInput').value.trim();
-    const status = document.getElementById('loginStatus');
-
-    if (!user || !pass) return;
-    status.innerText = "⏳ Перевірка...";
+    // Універсальна функція запиту до Шлюзу
+ async function apiRequest(payload) {
+    payload.masterKey = masterKey; 
+    
+    const finalUrl = `${GATEWAY_URL}?data=${encodeURIComponent(JSON.stringify(payload))}`;
 
     try {
-        // Відправляємо як URLSearchParams, це найнадійніший метод для GAS
-        const params = new URLSearchParams();
-        params.append('data', JSON.stringify({ action: "login", username: user, password: pass }));
-
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: params, // Передаємо параметри форми
+        const response = await fetch(finalUrl, {
+            method: 'GET', // Тільки GET для локальних тестів та GAS
             mode: 'cors'
+            // Приберіть headers взагалі, для GET вони не потрібні
         });
         
-        const result = await response.json();
-
-        if (result.status === "success") {
-            currentUser = result.displayName;
-            document.getElementById('loginArea').style.display = 'none';
-            document.getElementById('mainArea').style.display = 'block';
-            document.getElementById('userLabel').innerText = "📦 " + currentUser;
-            document.getElementById('barcodeInput').focus();
-        } else {
-            status.innerText = "❌ Невірний логін або пароль";
-        }
+        if (!response.ok) throw new Error('Мережева помилка');
+        
+        return await response.json();
     } catch (e) {
-        console.error(e);
-        status.innerText = "❌ Помилка CORS або мережі";
+        console.error("Fetch error:", e);
+        throw e;
     }
 }
 
-    // Вибір режиму
+    async function login() {
+        const user = document.getElementById('usernameInput').value.trim();
+        const pass = document.getElementById('passwordInput').value.trim();
+        const status = document.getElementById('loginStatus');
+
+        if (!user || !pass) return;
+        status.innerText = "⏳ Перевірка ключа та логіна...";
+
+        try {
+            const result = await apiRequest({ action: "login", username: user, password: pass });
+
+            if (result.status === "success") {
+                currentUser = result.displayName;
+                document.getElementById('loginArea').style.display = 'none';
+                document.getElementById('mainArea').style.display = 'block';
+                document.getElementById('userLabel').innerText = "👤 " + currentUser;
+                document.getElementById('barcodeInput').focus();
+            } else {
+                status.innerText = "❌ " + (result.message || "Помилка входу");
+            }
+        } catch (e) {
+            status.innerText = "❌ Помилка з'єднання зі шлюзом";
+        }
+    }
+
     function setMode(mode) {
         currentMode = mode;
         document.getElementById('modeOutbound').style.background = mode === 'Відправка' ? 'white' : 'transparent';
-        document.getElementById('modeOutbound').style.color = mode === 'Відправка' ? '#0056b3' : 'black';
         document.getElementById('modeInbound').style.background = mode === 'Отримання' ? 'white' : 'transparent';
-        document.getElementById('modeInbound').style.color = mode === 'Отримання' ? '#0056b3' : 'black';
         document.getElementById('barcodeInput').focus();
         updateUI();
     }
 
-    // Обробка Enter
     document.getElementById('barcodeInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
     });
@@ -195,7 +186,6 @@
 
         const type = val.toUpperCase().startsWith("BOX") ? "BOX" : "TTN";
         scans.push({ value: val, type: type });
-        
         input.value = "";
         input.focus();
         updateUI();
@@ -226,82 +216,52 @@
     function deleteScan(idx) {
         scans.splice(idx, 1);
         updateUI();
-        document.getElementById('errorDisplay').style.display = 'none';
-        document.getElementById('barcodeInput').focus();
     }
 
-    // Відправка
     async function submitData() {
         const status = document.getElementById('statusLabel');
         const errBox = document.getElementById('errorDisplay');
         errBox.style.display = 'none';
-        errBox.innerHTML = "";
 
-        let errors = [];
         let processedData = [];
+        let errors = [];
 
+        // Логіка групування BOX + TTN
         for (let i = 0; i < scans.length; i++) {
-            let item = scans[i];
-            let scanNum = i + 1;
-
             if (currentMode === "Відправка") {
-                if (item.type === "BOX") {
-                    let next = scans[i+1];
-                    if (!next || next.type === "BOX") {
-                        errors.push(`❗ Скан №${scanNum}: ${item.value} не має ТТН`);
-                    } else {
-                        processedData.push({ box: item.value, ttn: next.value, user: currentUser });
+                if (scans[i].type === "BOX") {
+                    if (scans[i+1] && scans[i+1].type === "TTN") {
+                        processedData.push({ box: scans[i].value, ttn: scans[i+1].value, user: currentUser });
                         i++; 
-                    }
-                } else { errors.push(`❗ Скан №${scanNum}: ТТН ${item.value} без BOX`); }
+                    } else { errors.push(`❗ Box ${scans[i].value} без ТТН`); }
+                } else { errors.push(`❗ ТТН ${scans[i].value} без Box`); }
             } else {
-                if (item.type === "BOX") {
-                    processedData.push({ box: item.value, ttn: "Прийнято", user: currentUser });
+                if (scans[i].type === "BOX") {
+                    processedData.push({ box: scans[i].value, user: currentUser });
                 }
             }
         }
 
         if (errors.length > 0) {
-            errBox.innerHTML = "<b>Помилки обробки:</b><br>" + errors.join("<br>");
+            errBox.innerHTML = errors.join("<br>");
             errBox.style.display = 'block';
-            status.innerText = "❌ Виправте помилки";
             return;
         }
 
-      status.innerText = "⏳ Відправка...";
+        status.innerText = "⏳ Відправка через шлюз...";
         try {
-            // Використовуємо URLSearchParams замість чистого JSON для обходу CORS
-            const params = new URLSearchParams();
-            params.append('data', JSON.stringify({ 
-                mode: currentMode, 
-                data: processedData 
-            }));
-
-            const response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                // НЕ додаємо заголовок Content-Type вручну, 
-                // браузер сам поставить correct form-urlencoded
-                body: params,
-                mode: 'cors'
-            });
-
-            const result = await response.json();
-
+            const result = await apiRequest({ mode: currentMode, data: processedData });
             if (result.status === "success") {
-                status.innerText = "✅ Успішно надіслано!";
+                status.innerText = "✅ Дані збережено!";
                 scans = [];
                 updateUI();
             } else {
-                status.innerText = "❌ Помилка: " + (result.message || "невідома помилка");
+                status.innerText = "❌ Помилка: " + result.message;
             }
         } catch (e) {
-            console.error(e);
-            status.innerText = "❌ Помилка мережі або CORS";
-            alert("Помилка при відправці! Перевірте консоль браузера.");
+            status.innerText = "❌ Помилка мережі";
         }
     }
 </script>
 </body>
 </html>
-
-
