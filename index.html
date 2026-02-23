@@ -96,35 +96,40 @@
 </div>
 
 <script>
-    // Спробуємо дістати URL з постійної пам'яті браузера
+   // 1. Спробуємо взяти URL з пам'яті або з параметрів посилання
     let GOOGLE_SCRIPT_URL = localStorage.getItem('api_url') || "";
+    
     let scans = [];
     let currentMode = 'Відправка';
     let currentUser = "";
 
     // Ініціалізація при завантаженні
     window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiParam = urlParams.get('api');
+
+        // Якщо в посиланні є ?api=..., зберігаємо його
+        if (apiParam) {
+            const fullUrl = `https://script.google.com/macros/s/${apiParam}/exec`;
+            localStorage.setItem('api_url', fullUrl);
+            GOOGLE_SCRIPT_URL = fullUrl;
+            // Очищуємо адресу в браузері для краси (прибираємо хвіст ?api=...)
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         if (!GOOGLE_SCRIPT_URL) {
+            // Якщо посилання немає ні в пам'яті, ні в параметрах
             document.getElementById('configArea').style.display = 'block';
         } else {
+            // Якщо все налаштовано — показуємо логін
+            document.getElementById('configArea').style.display = 'none';
             document.getElementById('loginArea').style.display = 'block';
         }
     };
 
-    // Збереження посилання один раз
-    function saveConfig() {
-        const url = document.getElementById('apiUrlInput').value.trim();
-        if (url.startsWith('https://script.google.com')) {
-            localStorage.setItem('api_url', url);
-            location.reload();
-        } else {
-            alert("Помилка! Введіть коректне посилання на Google Apps Script.");
-        }
-    }
-
-    // Очищення налаштувань (Вихід)
+    // Очищення налаштувань (кнопка "Вийти / Скинути")
     function clearAllData() {
-        if(confirm("Вийти з акаунту та скинути налаштування?")) {
+        if(confirm("Вийти з акаунту та скинути налаштування підключення?")) {
             localStorage.removeItem('api_url');
             location.reload();
         }
