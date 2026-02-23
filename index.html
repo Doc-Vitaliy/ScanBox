@@ -1,288 +1,276 @@
-﻿<!DOCTYPE html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Локальный Блокнот</title>
+    <title>Скан Термінал 📦</title>
     <style>
-        body {
-            font-family: sans-serif;
-            background-color: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 350px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        .input-area {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .input-row {
-            display: flex;
-            gap: 10px;
-        }
-        #usernameInput, #noteInput {
-            flex-grow: 1;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        #okButton, #saveFileButton, #clearNotesButton, #changeUserButton {
-            padding: 8px 16px;
-            border: none;
-            background-color: #007bff;
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #okButton:hover, #saveFileButton:hover, #clearNotesButton:hover, #changeUserButton:hover {
-            background-color: #0056b3;
-        }
-        #clearNotesButton {
-            background-color: #dc3545;
-        }
-        #clearNotesButton:hover {
-            background-color: #c82333;
-        }
-        #changeUserButton {
-            background-color: #ffc107;
-            color: black;
-        }
-        #changeUserButton:hover {
-            background-color: #e0a800;
-        }
-        #usernameDisplay {
-            padding: 8px;
+        :root { --main-blue: #0056b3; --error-red: #dc3545; }
+        body { font-family: sans-serif; background-color: #f0f4f8; padding: 10px; margin: 0; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        
+        h1 { text-align: center; font-size: 1.8rem; color: var(--main-blue); margin-top: 0; margin-bottom: 20px; }
+        
+        /* Секція конфігурації (перший запуск) */
+        #configArea { background: #fffbe6; border: 2px dashed #ffe58f; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: none; }
+        #configArea p { margin-top: 0; font-weight: bold; color: #856404; }
+
+        .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        input { flex-grow: 1; padding: 15px; border: 2px solid #ccc; border-radius: 8px; font-size: 20px; outline: none; width: 100%; box-sizing: border-box; }
+        input:focus { border-color: var(--main-blue); }
+        
+        button { padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-blue { background: var(--main-blue); color: white; width: 100%; }
+        .btn-green { background: #28a745; color: white; width: 100%; margin-top: 15px; font-size: 20px; }
+        .btn-green:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Елементи списку */
+        .scan-list { margin-top: 15px; border-top: 2px solid #eee; max-height: 450px; overflow-y: auto; }
+        .scan-item { display: flex; align-items: center; padding: 12px 5px; border-bottom: 2px solid #f0f0f0; font-size: 1.3rem; }
+        .scan-index { width: 45px; color: #888; font-weight: bold; flex-shrink: 0; }
+        .scan-info { flex-grow: 1; display: flex; justify-content: space-between; margin-right: 15px; font-family: monospace; }
+        
+        /* Великий хрестик видалення */
+        .delete-btn { 
+            color: var(--error-red); 
+            background: #fff1f0; 
+            border: 2px solid #ffa39e; 
+            padding: 5px 15px; 
+            cursor: pointer; 
+            font-size: 30px; 
+            border-radius: 8px; 
+            line-height: 1; 
             font-weight: bold;
-            color: #333;
         }
-        .note-item {
-            background-color: #f9f9f9;
-            padding: 10px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            word-wrap: break-word;
-        }
-        /* Стиль для неактивных элементов */
-        .disabled-note-input {
-            background-color: #e9e9e9;
-            cursor: not-allowed;
-        }
-        .disabled-note-button {
-            background-color: #c0c0c0;
-            cursor: not-allowed;
-        }
+
+        #errorDisplay { display: none; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 1.1rem; line-height: 1.4; }
+        .status-msg { text-align: center; font-weight: bold; margin: 10px 0; font-size: 1.1rem; min-height: 24px; }
+        #counterLabel { text-align: right; color: #666; font-weight: bold; margin-bottom: 5px; font-size: 1rem; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Скан мест</h1>
-        
-        <div class="input-area">
-            <!-- Поле для имени пользователя -->
-            <div id="userLoginArea" class="input-row">
-                <input type="text" id="usernameInput" placeholder="Имя пользователя...">
-                <button id="okUserButton">ОК</button>
-            </div>
-            
-            <!-- Область отображения имени пользователя -->
-            <div id="userDisplayArea" class="input-row hidden" style="display: none;">
-                <span id="usernameDisplay"></span>
-                <button id="changeUserButton">Изменить пользователя</button>
-            </div>
+<div class="container">
+    <h1>Скан Термінал 🟦📦</h1>
 
-            <!-- Поля для заметок -->
-            <div class="input-row">
-                <input type="text" id="noteInput" placeholder="Скан id" disabled>
-                <button id="okNoteButton" disabled>ОК</button>
-            </div>
-            <div class="input-row">
-                <button id="saveFileButton">Сохранить в файл</button>
-                <button id="clearNotesButton">Очистить записи на странице</button>
-            </div>
-        </div>
-
-        <div id="notesContainer">
-            <!-- Записи будут отображаться здесь -->
-        </div>
+    <div id="configArea">
+        <p>⚠️ Система не налаштована.</p>
+        <input type="password" id="apiUrlInput" placeholder="Вставте URL вашого скрипта...">
+        <button class="btn-blue" style="margin-top:12px" onclick="saveConfig()">ПІДКЛЮЧИТИ БАЗУ</button>
     </div>
 
-    <script>
-        // Получаем элементы DOM
-        const usernameInput = document.getElementById('usernameInput');
-        const okUserButton = document.getElementById('okUserButton');
-        const usernameDisplay = document.getElementById('usernameDisplay');
-        const changeUserButton = document.getElementById('changeUserButton');
-        const noteInput = document.getElementById('noteInput');
-        const okNoteButton = document.getElementById('okNoteButton');
-        const saveFileButton = document.getElementById('saveFileButton');
-        const clearNotesButton = document.getElementById('clearNotesButton');
-        const notesContainer = document.getElementById('notesContainer');
-        const userLoginArea = document.getElementById('userLoginArea');
-        const userDisplayArea = document.getElementById('userDisplayArea');
-        
-        // Ключ для Local Storage
-        const storageKey = 'myNotes';
-        const notesToDisplay = 4; // Количество отображаемых записей
-        let currentUsername = "";
+    <div id="loginArea" style="display:none">
+        <div class="input-row" style="flex-direction: column;">
+            <input type="text" id="usernameInput" placeholder="Логін">
+            <input type="password" id="passwordInput" placeholder="Пароль" style="margin-top: 10px;">
+            <button class="btn-blue" style="margin-top: 15px;" onclick="login()">УВІЙТИ</button>
+        </div>
+        <div id="loginStatus" style="text-align: center; color: red; margin-top: 10px; font-weight: bold;"></div>
+    </div>
 
-        // Функция для загрузки и отображения заметок из Local Storage
-        function loadNotes() {
-            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
-            notesContainer.innerHTML = ''; // Очищаем контейнер перед отображением
-            
-            // Получаем только последние 'notesToDisplay' заметок
-            const notesForDisplay = savedNotes.slice(-notesToDisplay).reverse();
-            
-            notesForDisplay.forEach(logString => {
-                const parts = logString.split(' | ');
-                const username = parts[0] || 'Неизвестный пользователь';
-                const note = parts[1] || 'Без записи';
-                const timestamp = parts[2] || 'Неизвестное время';
-                
-                const noteElement = document.createElement('div');
-                noteElement.className = "note-item";
-                noteElement.innerHTML = `<strong>Пользователь:</strong> ${username}<br><strong>Запись:</strong> ${note}<br><strong>Время:</strong> ${timestamp}`;
-                notesContainer.appendChild(noteElement);
+    <div id="mainArea" style="display:none;">
+        <div id="modeSelector" class="input-row" style="background: #eee; padding: 5px; border-radius: 10px; margin-bottom:20px;">
+            <button id="modeOutbound" style="flex:1; background: white; color: var(--main-blue);" onclick="setMode('Відправка')">ВІДПРАВКА</button>
+            <button id="modeInbound" style="flex:1; background: transparent;" onclick="setMode('Отримання')">ОТРИМАННЯ</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span id="userLabel" style="font-size: 1.2rem; font-weight: bold;">📦</span>
+            <button onclick="clearAllData()" style="padding: 8px 15px; background: #6c757d; font-size: 14px; color: white;">Вийти / Скинути</button>
+        </div>
+
+        <div class="input-row">
+            <input type="text" id="barcodeInput" placeholder="Скануйте...">
+            <button class="btn-blue" style="width: 70px;" onclick="handleScan()">+</button>
+        </div>
+        
+        <div id="counterLabel">Всього: 0</div>
+        <div id="errorDisplay"></div>
+        <div id="statusLabel" class="status-msg"></div>
+
+        <div class="scan-list" id="scanList"></div>
+        
+        <button id="processBtn" class="btn-green" onclick="submitData()" disabled>ОБРОБИТИ ВСЕ</button>
+    </div>
+</div>
+
+<script>
+    // Спробуємо дістати URL з постійної пам'яті браузера
+    let GOOGLE_SCRIPT_URL = localStorage.getItem('api_url') || "";
+    let scans = [];
+    let currentMode = 'Відправка';
+    let currentUser = "";
+
+    // Ініціалізація при завантаженні
+    window.onload = () => {
+        if (!GOOGLE_SCRIPT_URL) {
+            document.getElementById('configArea').style.display = 'block';
+        } else {
+            document.getElementById('loginArea').style.display = 'block';
+        }
+    };
+
+    // Збереження посилання один раз
+    function saveConfig() {
+        const url = document.getElementById('apiUrlInput').value.trim();
+        if (url.startsWith('https://script.google.com')) {
+            localStorage.setItem('api_url', url);
+            location.reload();
+        } else {
+            alert("Помилка! Введіть коректне посилання на Google Apps Script.");
+        }
+    }
+
+    // Очищення налаштувань (Вихід)
+    function clearAllData() {
+        if(confirm("Вийти з акаунту та скинути налаштування?")) {
+            localStorage.removeItem('api_url');
+            location.reload();
+        }
+    }
+
+    // Авторизація
+    async function login() {
+        const user = document.getElementById('usernameInput').value.trim();
+        const pass = document.getElementById('passwordInput').value.trim();
+        const status = document.getElementById('loginStatus');
+
+        if (!user || !pass) return;
+        status.innerText = "⏳ Перевірка...";
+
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "login", username: user, password: pass })
             });
-        }
+            const result = await response.json();
 
-        // Функция для сохранения новой заметки в Local Storage
-        function saveNote(noteText) {
-            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
-            const timestamp = new Date().toLocaleString();
-            const logString = `${currentUsername} | ${noteText} | ${timestamp}`;
-
-            savedNotes.push(logString);
-            localStorage.setItem(storageKey, JSON.stringify(savedNotes));
-        }
-
-        // Функция для добавления новой заметки на страницу
-        function addNoteToDisplay(noteText) {
-            // Очищаем, если количество записей превышает лимит
-            const existingNotes = notesContainer.querySelectorAll('.note-item');
-            if (existingNotes.length >= notesToDisplay) {
-                notesContainer.removeChild(existingNotes[existingNotes.length - 1]);
-            }
-            
-            const timestamp = new Date().toLocaleString();
-            const noteElement = document.createElement('div');
-            noteElement.className = "note-item";
-            noteElement.innerHTML = `<strong>Пользователь:</strong> ${currentUsername}<br><strong>Запись:</strong> ${noteText}<br><strong>Время:</strong> ${timestamp}`;
-            notesContainer.prepend(noteElement); // Добавляем новую заметку в начало
-        }
-
-        // Функция для сохранения всех заметок в файл
-        function saveToFile() {
-            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
-            if (savedNotes.length === 0) {
-                console.log("Нет записей для сохранения!");
-                return;
-            }
-
-            const logsText = savedNotes.join('\n');
-            const blob = new Blob([logsText], {type: "text/plain;charset=utf-8"});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = "notepad_logs.txt";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-        }
-        
-        // Функция для очистки отображаемых заметок
-        function clearDisplayedNotes() {
-            notesContainer.innerHTML = '';
-        }
-
-        // Обработчик для кнопки ОК
-        function addNewNote() {
-            const noteText = noteInput.value.trim();
-
-            if (noteText !== "") {
-                saveNote(noteText);
-                noteInput.value = "";
-                addNoteToDisplay(noteText);
+            if (result.status === "success") {
+                currentUser = result.displayName;
+                document.getElementById('loginArea').style.display = 'none';
+                document.getElementById('mainArea').style.display = 'block';
+                document.getElementById('userLabel').innerText = "📦 " + currentUser;
+                document.getElementById('barcodeInput').focus();
             } else {
-                console.log("Поле 'Заметка' не может быть пустым!");
+                status.innerText = "❌ Невірний логін або пароль";
             }
+        } catch (e) {
+            status.innerText = "❌ Помилка з'єднання з базою";
         }
+    }
+
+    // Вибір режиму
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('modeOutbound').style.background = mode === 'Відправка' ? 'white' : 'transparent';
+        document.getElementById('modeOutbound').style.color = mode === 'Відправка' ? '#0056b3' : 'black';
+        document.getElementById('modeInbound').style.background = mode === 'Отримання' ? 'white' : 'transparent';
+        document.getElementById('modeInbound').style.color = mode === 'Отримання' ? '#0056b3' : 'black';
+        document.getElementById('barcodeInput').focus();
+        updateUI();
+    }
+
+    // Обробка Enter
+    document.getElementById('barcodeInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
+    });
+
+    function handleScan() {
+        const input = document.getElementById('barcodeInput');
+        const val = input.value.trim();
+        if (!val) return;
+
+        const type = val.toUpperCase().startsWith("BOX") ? "BOX" : "TTN";
+        scans.push({ value: val, type: type });
         
-        // Обработчик для входа
-        function loginUser() {
-            const username = usernameInput.value.trim();
-            if (username !== "") {
-                currentUsername = username;
-                usernameDisplay.textContent = currentUsername;
+        input.value = "";
+        input.focus();
+        updateUI();
+    }
 
-                userLoginArea.style.display = 'none';
-                userDisplayArea.style.display = 'flex';
-
-                noteInput.disabled = false;
-                okNoteButton.disabled = false;
-                noteInput.classList.remove('disabled-note-input');
-                okNoteButton.classList.remove('disabled-note-button');
-                
-                loadNotes();
-            } else {
-                console.log("Поле 'Имя пользователя' не может быть пустым!");
-            }
-        }
-
-        // Обработчик для смены пользователя
-        function changeUser() {
-            currentUsername = "";
-            usernameInput.value = "";
-            usernameDisplay.textContent = "";
-
-            userLoginArea.style.display = 'flex';
-            userDisplayArea.style.display = 'none';
-
-            noteInput.disabled = true;
-            okNoteButton.disabled = true;
-            noteInput.classList.add('disabled-note-input');
-            okNoteButton.classList.add('disabled-note-button');
-
-            clearDisplayedNotes();
-        }
+    function updateUI() {
+        const list = document.getElementById('scanList');
+        document.getElementById('counterLabel').innerText = "Всього: " + scans.length;
+        list.innerHTML = "";
         
-        okUserButton.addEventListener('click', loginUser);
-        changeUserButton.addEventListener('click', changeUser);
-        okNoteButton.addEventListener('click', addNewNote);
-        noteInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                addNewNote();
-            }
+        scans.slice().reverse().forEach((item, revIndex) => {
+            const idx = scans.length - 1 - revIndex;
+            const div = document.createElement('div');
+            div.className = 'scan-item';
+            div.innerHTML = `
+                <span class="scan-index">${idx + 1}.</span>
+                <div class="scan-info">
+                    <span>${item.value}</span>
+                    <b style="color: ${item.type === 'BOX' ? '#0056b3' : '#666'}">${item.type}</b>
+                </div>
+                <button class="delete-btn" onclick="deleteScan(${idx})">&times;</button>
+            `;
+            list.appendChild(div);
         });
-        saveFileButton.addEventListener('click', saveToFile);
-        clearNotesButton.addEventListener('click', clearDisplayedNotes);
+        document.getElementById('processBtn').disabled = scans.length === 0;
+    }
 
-        // Добавляем класс disabled при загрузке
-        window.onload = function() {
-            noteInput.classList.add('disabled-note-input');
-            okNoteButton.classList.add('disabled-note-button');
-        };
-    </script>
+    function deleteScan(idx) {
+        scans.splice(idx, 1);
+        updateUI();
+        document.getElementById('errorDisplay').style.display = 'none';
+        document.getElementById('barcodeInput').focus();
+    }
 
+    // Відправка
+    async function submitData() {
+        const status = document.getElementById('statusLabel');
+        const errBox = document.getElementById('errorDisplay');
+        errBox.style.display = 'none';
+        errBox.innerHTML = "";
+
+        let errors = [];
+        let processedData = [];
+
+        for (let i = 0; i < scans.length; i++) {
+            let item = scans[i];
+            let scanNum = i + 1;
+
+            if (currentMode === "Відправка") {
+                if (item.type === "BOX") {
+                    let next = scans[i+1];
+                    if (!next || next.type === "BOX") {
+                        errors.push(`❗ Скан №${scanNum}: ${item.value} не має ТТН`);
+                    } else {
+                        processedData.push({ box: item.value, ttn: next.value, user: currentUser });
+                        i++; 
+                    }
+                } else { errors.push(`❗ Скан №${scanNum}: ТТН ${item.value} без BOX`); }
+            } else {
+                if (item.type === "BOX") {
+                    processedData.push({ box: item.value, ttn: "Прийнято", user: currentUser });
+                }
+            }
+        }
+
+        if (errors.length > 0) {
+            errBox.innerHTML = "<b>Помилки обробки:</b><br>" + errors.join("<br>");
+            errBox.style.display = 'block';
+            status.innerText = "❌ Виправте помилки";
+            return;
+        }
+
+        status.innerText = "⏳ Відправка...";
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ mode: currentMode, data: processedData })
+            });
+            status.innerText = "✅ Успішно надіслано!";
+            scans = [];
+            updateUI();
+        } catch (e) { 
+            alert("Помилка мережі!"); 
+            status.innerText = "";
+        }
+    }
+</script>
 </body>
 </html>
-
-
