@@ -137,33 +137,40 @@
 
     // Авторизація
     async function login() {
-        const user = document.getElementById('usernameInput').value.trim();
-        const pass = document.getElementById('passwordInput').value.trim();
-        const status = document.getElementById('loginStatus');
+    const user = document.getElementById('usernameInput').value.trim();
+    const pass = document.getElementById('passwordInput').value.trim();
+    const status = document.getElementById('loginStatus');
 
-        if (!user || !pass) return;
-        status.innerText = "⏳ Перевірка...";
+    if (!user || !pass) return;
+    status.innerText = "⏳ Перевірка...";
 
-        try {
-            const response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: "login", username: user, password: pass })
-            });
-            const result = await response.json();
+    try {
+        // Відправляємо як URLSearchParams, це найнадійніший метод для GAS
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({ action: "login", username: user, password: pass }));
 
-            if (result.status === "success") {
-                currentUser = result.displayName;
-                document.getElementById('loginArea').style.display = 'none';
-                document.getElementById('mainArea').style.display = 'block';
-                document.getElementById('userLabel').innerText = "📦 " + currentUser;
-                document.getElementById('barcodeInput').focus();
-            } else {
-                status.innerText = "❌ Невірний логін або пароль";
-            }
-        } catch (e) {
-            status.innerText = "❌ Помилка з'єднання з базою";
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: params, // Передаємо параметри форми
+            mode: 'cors'
+        });
+        
+        const result = await response.json();
+
+        if (result.status === "success") {
+            currentUser = result.displayName;
+            document.getElementById('loginArea').style.display = 'none';
+            document.getElementById('mainArea').style.display = 'block';
+            document.getElementById('userLabel').innerText = "📦 " + currentUser;
+            document.getElementById('barcodeInput').focus();
+        } else {
+            status.innerText = "❌ Невірний логін або пароль";
         }
+    } catch (e) {
+        console.error(e);
+        status.innerText = "❌ Помилка CORS або мережі";
     }
+}
 
     // Вибір режиму
     function setMode(mode) {
@@ -261,35 +268,40 @@
             return;
         }
 
-       status.innerText = "⏳ Відправка...";
-try {
-    const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-            mode: currentMode, 
-            data: processedData 
-        })
-    });
+      status.innerText = "⏳ Відправка...";
+        try {
+            // Використовуємо URLSearchParams замість чистого JSON для обходу CORS
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify({ 
+                mode: currentMode, 
+                data: processedData 
+            }));
 
-    const result = await response.json();
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                // НЕ додаємо заголовок Content-Type вручну, 
+                // браузер сам поставить correct form-urlencoded
+                body: params,
+                mode: 'cors'
+            });
 
-    if (result.status === "success") {
-        status.innerText = "✅ Успішно надіслано!";
-        scans = [];
-        updateUI();
-    } else {
-        status.innerText = "❌ Помилка: " + result.message;
-    }
+            const result = await response.json();
 
-} catch (e) {
-    alert("Помилка мережі!");
-    status.innerText = "";
-}
+            if (result.status === "success") {
+                status.innerText = "✅ Успішно надіслано!";
+                scans = [];
+                updateUI();
+            } else {
+                status.innerText = "❌ Помилка: " + (result.message || "невідома помилка");
+            }
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Помилка мережі або CORS";
+            alert("Помилка при відправці! Перевірте консоль браузера.");
+        }
     }
 </script>
 </body>
 </html>
+
 
