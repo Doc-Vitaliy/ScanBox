@@ -1,0 +1,286 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Локальный Блокнот</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 350px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+        #usernameInput, #noteInput {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #okButton, #saveFileButton, #clearNotesButton, #changeUserButton {
+            padding: 8px 16px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #okButton:hover, #saveFileButton:hover, #clearNotesButton:hover, #changeUserButton:hover {
+            background-color: #0056b3;
+        }
+        #clearNotesButton {
+            background-color: #dc3545;
+        }
+        #clearNotesButton:hover {
+            background-color: #c82333;
+        }
+        #changeUserButton {
+            background-color: #ffc107;
+            color: black;
+        }
+        #changeUserButton:hover {
+            background-color: #e0a800;
+        }
+        #usernameDisplay {
+            padding: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .note-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+        /* Стиль для неактивных элементов */
+        .disabled-note-input {
+            background-color: #e9e9e9;
+            cursor: not-allowed;
+        }
+        .disabled-note-button {
+            background-color: #c0c0c0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Скан мест</h1>
+        
+        <div class="input-area">
+            <!-- Поле для имени пользователя -->
+            <div id="userLoginArea" class="input-row">
+                <input type="text" id="usernameInput" placeholder="Имя пользователя...">
+                <button id="okUserButton">ОК</button>
+            </div>
+            
+            <!-- Область отображения имени пользователя -->
+            <div id="userDisplayArea" class="input-row hidden" style="display: none;">
+                <span id="usernameDisplay"></span>
+                <button id="changeUserButton">Изменить пользователя</button>
+            </div>
+
+            <!-- Поля для заметок -->
+            <div class="input-row">
+                <input type="text" id="noteInput" placeholder="Скан id" disabled>
+                <button id="okNoteButton" disabled>ОК</button>
+            </div>
+            <div class="input-row">
+                <button id="saveFileButton">Сохранить в файл</button>
+                <button id="clearNotesButton">Очистить записи на странице</button>
+            </div>
+        </div>
+
+        <div id="notesContainer">
+            <!-- Записи будут отображаться здесь -->
+        </div>
+    </div>
+
+    <script>
+        // Получаем элементы DOM
+        const usernameInput = document.getElementById('usernameInput');
+        const okUserButton = document.getElementById('okUserButton');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const changeUserButton = document.getElementById('changeUserButton');
+        const noteInput = document.getElementById('noteInput');
+        const okNoteButton = document.getElementById('okNoteButton');
+        const saveFileButton = document.getElementById('saveFileButton');
+        const clearNotesButton = document.getElementById('clearNotesButton');
+        const notesContainer = document.getElementById('notesContainer');
+        const userLoginArea = document.getElementById('userLoginArea');
+        const userDisplayArea = document.getElementById('userDisplayArea');
+        
+        // Ключ для Local Storage
+        const storageKey = 'myNotes';
+        const notesToDisplay = 4; // Количество отображаемых записей
+        let currentUsername = "";
+
+        // Функция для загрузки и отображения заметок из Local Storage
+        function loadNotes() {
+            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
+            notesContainer.innerHTML = ''; // Очищаем контейнер перед отображением
+            
+            // Получаем только последние 'notesToDisplay' заметок
+            const notesForDisplay = savedNotes.slice(-notesToDisplay).reverse();
+            
+            notesForDisplay.forEach(logString => {
+                const parts = logString.split(' | ');
+                const username = parts[0] || 'Неизвестный пользователь';
+                const note = parts[1] || 'Без записи';
+                const timestamp = parts[2] || 'Неизвестное время';
+                
+                const noteElement = document.createElement('div');
+                noteElement.className = "note-item";
+                noteElement.innerHTML = `<strong>Пользователь:</strong> ${username}<br><strong>Запись:</strong> ${note}<br><strong>Время:</strong> ${timestamp}`;
+                notesContainer.appendChild(noteElement);
+            });
+        }
+
+        // Функция для сохранения новой заметки в Local Storage
+        function saveNote(noteText) {
+            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
+            const timestamp = new Date().toLocaleString();
+            const logString = `${currentUsername} | ${noteText} | ${timestamp}`;
+
+            savedNotes.push(logString);
+            localStorage.setItem(storageKey, JSON.stringify(savedNotes));
+        }
+
+        // Функция для добавления новой заметки на страницу
+        function addNoteToDisplay(noteText) {
+            // Очищаем, если количество записей превышает лимит
+            const existingNotes = notesContainer.querySelectorAll('.note-item');
+            if (existingNotes.length >= notesToDisplay) {
+                notesContainer.removeChild(existingNotes[existingNotes.length - 1]);
+            }
+            
+            const timestamp = new Date().toLocaleString();
+            const noteElement = document.createElement('div');
+            noteElement.className = "note-item";
+            noteElement.innerHTML = `<strong>Пользователь:</strong> ${currentUsername}<br><strong>Запись:</strong> ${noteText}<br><strong>Время:</strong> ${timestamp}`;
+            notesContainer.prepend(noteElement); // Добавляем новую заметку в начало
+        }
+
+        // Функция для сохранения всех заметок в файл
+        function saveToFile() {
+            const savedNotes = JSON.parse(localStorage.getItem(storageKey)) || [];
+            if (savedNotes.length === 0) {
+                console.log("Нет записей для сохранения!");
+                return;
+            }
+
+            const logsText = savedNotes.join('\n');
+            const blob = new Blob([logsText], {type: "text/plain;charset=utf-8"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "notepad_logs.txt";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+        
+        // Функция для очистки отображаемых заметок
+        function clearDisplayedNotes() {
+            notesContainer.innerHTML = '';
+        }
+
+        // Обработчик для кнопки ОК
+        function addNewNote() {
+            const noteText = noteInput.value.trim();
+
+            if (noteText !== "") {
+                saveNote(noteText);
+                noteInput.value = "";
+                addNoteToDisplay(noteText);
+            } else {
+                console.log("Поле 'Заметка' не может быть пустым!");
+            }
+        }
+        
+        // Обработчик для входа
+        function loginUser() {
+            const username = usernameInput.value.trim();
+            if (username !== "") {
+                currentUsername = username;
+                usernameDisplay.textContent = currentUsername;
+
+                userLoginArea.style.display = 'none';
+                userDisplayArea.style.display = 'flex';
+
+                noteInput.disabled = false;
+                okNoteButton.disabled = false;
+                noteInput.classList.remove('disabled-note-input');
+                okNoteButton.classList.remove('disabled-note-button');
+                
+                loadNotes();
+            } else {
+                console.log("Поле 'Имя пользователя' не может быть пустым!");
+            }
+        }
+
+        // Обработчик для смены пользователя
+        function changeUser() {
+            currentUsername = "";
+            usernameInput.value = "";
+            usernameDisplay.textContent = "";
+
+            userLoginArea.style.display = 'flex';
+            userDisplayArea.style.display = 'none';
+
+            noteInput.disabled = true;
+            okNoteButton.disabled = true;
+            noteInput.classList.add('disabled-note-input');
+            okNoteButton.classList.add('disabled-note-button');
+
+            clearDisplayedNotes();
+        }
+        
+        okUserButton.addEventListener('click', loginUser);
+        changeUserButton.addEventListener('click', changeUser);
+        okNoteButton.addEventListener('click', addNewNote);
+        noteInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                addNewNote();
+            }
+        });
+        saveFileButton.addEventListener('click', saveToFile);
+        clearNotesButton.addEventListener('click', clearDisplayedNotes);
+
+        // Добавляем класс disabled при загрузке
+        window.onload = function() {
+            noteInput.classList.add('disabled-note-input');
+            okNoteButton.classList.add('disabled-note-button');
+        };
+    </script>
+
+</body>
+</html>
