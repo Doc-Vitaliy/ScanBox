@@ -4,134 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Скан Термінал 🚀</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; }
-        body { font-family: sans-serif; background-color: #f0f4f8; padding: 15px; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        
+        /* 1. ЗМІЩЕННЯ ВГОРУ: змінено center на flex-start */
+        body { 
+            font-family: sans-serif; 
+            background-color: #f0f4f8; 
+            padding: 15px; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-start; /* Підняли вгору */
+            padding-top: 30px;        /* Відступ від верхнього краю */
+            min-height: 100vh; 
+        }
+        
+        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; position: relative; }
         
         h1 { text-align: center; margin-top: 0; color: #333; font-size: 1.5rem; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; outline: none; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
         
-        /* Поля вводу */
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; outline: none; transition: border-color 0.3s; }
-        input:focus { border-color: var(--primary); }
-        
-        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: opacity 0.3s; }
-        button:active { opacity: 0.8; }
         .btn-blue { background: var(--primary); color: white; }
         .btn-green { background: var(--success); color: white; margin-top: 15px; }
-        .btn-green:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-green:disabled { background: #ccc; }
 
-        /* Меню режимів */
+        .printer-trigger { position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; background: none; border: none; width: auto; z-index: 10; padding: 0; }
+
+        #printModal { display: none; position: absolute; top: 55px; right: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); width: 220px; z-index: 100; border: 1px solid #ddd; }
+        #printModal input { padding: 8px; margin: 5px 0; font-size: 14px; }
+
         .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; background: #eee; padding: 5px; border-radius: 10px; }
         .mode-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; background: transparent; font-weight: bold; }
         .mode-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        /* Стиль списку сканування */
-				.scan-list { 
-					margin-top: 15px; 
-					border-top: 1px solid #eee; 
-					max-height: 400px; 
-					overflow-y: auto; 
-				}
+        .scan-list { margin-top: 15px; border-top: 1px solid #eee; max-height: 400px; overflow-y: auto; }
+        .scan-item { 
+						display: flex; 
+						align-items: center; 
+						justify-content: space-between; /* Повертає кнопку видалення в крайній правий кут */
+						padding: 8px 0; 
+						border-bottom: 1px solid #eee; 
+					}
 
-				.scan-item { 
-							display: flex; 
-							align-items: center; 
-							padding: 8px 12px; 
-							border-bottom: 1px solid #eee; 
-							gap: 10px; /* Відступ між елементами */
-						}
-				.scan-info {
-								display: flex;
-								align-items: center;
-								gap: 8px;
-								flex-grow: 1; 
-							}
-				.scan-item:hover { background: #fafafa; }
+		.scan-idx { 
+						color: #999; 
+						font-size: 12px; 
+						min-width: 25px; /* Фіксоване місце для номера, щоб текст не «плив» */
+						display: inline-block;
+					}
 
-				/* Ліва частина: Номер та дані */
-				.scan-details { 
-					display: flex; 
-					align-items: center; 
-					gap: 10px; 
-					font-size: 15px;
-				}
-
-				.scan-number { 
-					color: #999; 
-					font-size: 12px; 
-					font-weight: bold; 
-					min-width: 20px; 
-				}
-
-				.scan-text { 
-					font-weight: 600; 
-					color: #333; 
-					font-family: 'Segoe UI', Roboto, sans-serif;
-				}
-
-				.scan-tag { 
-					font-size: 10px; 
-					padding: 2px 6px; 
-					border-radius: 4px; 
-					background: #e7f1ff; 
-					color: #007bff; 
-					text-transform: uppercase; 
-					font-weight: 800;
-				}
-
-				/* Компактна кнопка видалення */
-				.delete-btn { 
-								background: none;
-								border: none;
-								color: #ff4d4f; 
-								cursor: pointer; 
-								font-size: 20px; /* Розмір хрестика */
-								font-weight: bold;
-								width: 30px;    /* Фіксована ширина */
-								height: 30px;   /* Фіксована висота */
-								display: flex;
-								align-items: center;
-								justify-content: center;
-								border-radius: 50%;
-								transition: background 0.2s;
-								flex-shrink: 0; /* ЗАБОРОНЯЄМО кнопці розтягуватися */
-								padding: 0;
-							}
-
-				.delete-btn:hover { 
-							background: #fff1f0; /* Легкий фон при наведенні */
-									}
-
-				/* Підсвітка дублікатів */
-				.duplicate { 
-					background: #fff1f0 !important; 
-					border-left: 4px solid #ff4d4f;
-				}
-
-        #errorDisplay { display: none; color: var(--danger); background: #f8d7da; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid var(--danger); }
-        .status-msg { text-align: center; font-weight: bold; margin: 10px 0; }
+		.scan-tag { 
+						font-size: 10px; 
+						padding: 2px 6px; 
+						border-radius: 4px; 
+						background: #e7f1ff; 
+						color: #007bff; 
+						text-transform: uppercase; 
+						font-weight: 800; 
+						margin-left: 8px; /* Відступ мітки від номера штрихкоду */
+					}
         
-        /* Сховати/Показати секції */
-        #mainArea, #settingsLink { display: none; }
+        .delete-btn { background: none; border: none; color: #ff4d4f; cursor: pointer; font-size: 20px; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .duplicate { background: #fff1f0 !important; border-left: 4px solid #ff4d4f; }
+
+        #errorDisplay { display: none; color: var(--danger); background: #f8d7da; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; }
+        .status-msg { text-align: center; font-weight: bold; margin: 10px 0; }
+        #mainArea { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <button class="printer-trigger" onclick="togglePrintModal()">🖨️</button>
+
+    <div id="printModal">
+        <h3 style="margin:0; font-size:14px;">Генератор ШК</h3>
+        <input type="number" id="printFrom" placeholder="З номера">
+        <input type="number" id="printTo" placeholder="По номер">
+        <button class="btn-blue" onclick="generateAndPrintBatch()" style="padding:10px; font-size:14px;">ДРУК</button>
+        <button onclick="togglePrintModal()" style="background:none; border:none; color:gray; cursor:pointer; margin-top:5px; font-size:12px;">Закрити</button>
+    </div>
+
     <div id="loginArea">
         <h1>Вхід в систему 🔐</h1>
         <input type="text" id="usernameInput" placeholder="Логін">
         <input type="password" id="passwordInput" placeholder="Пароль">
         <button class="btn-blue" onclick="login()">Увійти</button>
-        <div id="loginStatus" style="text-align: center; color: var(--danger); margin-top: 10px; font-size: 0.9rem;"></div>
+        <div id="loginStatus" style="text-align: center; color: var(--danger); margin-top: 10px;"></div>
         <p style="text-align: center; font-size: 0.7rem; color: #888; margin-top: 20px; cursor: pointer;" onclick="resetApiUrl()">Налаштувати API URL</p>
     </div>
 
     <div id="mainArea">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: flex-start; align-items: center; gap: 12px; margin-bottom: 15px;">
             <span id="userLabel" style="font-weight: bold;"></span>
-            <button onclick="location.reload()" style="width: auto; padding: 5px 10px; background: #6c757d; color: white; font-size: 12px;">Вийти</button>
+            <button onclick="location.reload()" style="width: auto; padding: 4px 10px; background: #6c757d; color: white; font-size: 11px; border-radius: 6px;">Вийти</button>
         </div>
 
         <div class="mode-selector">
@@ -140,196 +109,145 @@
         </div>
 
         <input type="text" id="barcodeInput" placeholder="Скануйте BOX або ТТН...">
-        
         <div id="errorDisplay"></div>
         <div id="statusLabel" class="status-msg"></div>
         <div class="scan-list" id="scanList"></div>
-        
         <button id="processBtn" class="btn-green" onclick="submitData()" disabled>ОБРОБИТИ ВСЕ (0)</button>
     </div>
 </div>
 
 <script>
-    // Отримуємо URL з пам'яті браузера або просимо ввести
     let GOOGLE_SCRIPT_URL = localStorage.getItem('api_url');
-
-    if (!GOOGLE_SCRIPT_URL) {
-        setupApiUrl();
-    }
+    if (!GOOGLE_SCRIPT_URL) { setupApiUrl(); }
 
     function setupApiUrl() {
-        const url = prompt("Будь ласка, введіть посилання на ваш Google Script (Web App URL):");
-        if (url && url.includes('exec')) {
-            localStorage.setItem('api_url', url);
-            GOOGLE_SCRIPT_URL = url;
-        } else {
-            alert("Некоректне посилання. Робота неможлива.");
-        }
+        const url = prompt("Введіть Web App URL:");
+        if (url && url.includes('exec')) { localStorage.setItem('api_url', url); GOOGLE_SCRIPT_URL = url; }
     }
 
-    function resetApiUrl() {
-        localStorage.removeItem('api_url');
-        location.reload();
-    }
+    function resetApiUrl() { localStorage.removeItem('api_url'); location.reload(); }
 
     let currentMode = 'Відправка';
     let currentUser = "";
     let scans = [];
 
-    // --- АВТОРИЗАЦІЯ ---
+    function togglePrintModal() {
+        const m = document.getElementById('printModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function generateAndPrintBatch() {
+        const from = parseInt(document.getElementById('printFrom').value);
+        const toVal = document.getElementById('printTo').value;
+        const to = toVal ? parseInt(toVal) : from;
+
+        if (isNaN(from)) { alert("Введіть номер!"); return; }
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html><head><style>@page { margin: 0; } body { margin: 0; } .page { page-break-after: always; display: flex; align-items: center; justify-content: center; width: 100%; overflow: hidden; } svg { width: 90%; height: auto; padding: 10px; }</style></head><body>`);
+        const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        for (let i = from; i <= to; i++) {
+            JsBarcode(tempSvg, "Box-" + i, { format: "CODE128", width: 3, height: 100, displayValue: true, fontSize: 80, fontOptions: "bold" });
+            printWindow.document.write('<div class="page">' + tempSvg.outerHTML + '</div>');
+        }
+        printWindow.document.write('<script>window.onload=()=>{window.print();window.close();}<\/script></body></html>');
+        printWindow.document.close();
+        togglePrintModal();
+    }
+
     async function login() {
         const user = document.getElementById('usernameInput').value.trim();
         const pass = document.getElementById('passwordInput').value.trim();
         const status = document.getElementById('loginStatus');
-
-        if (!user || !pass) {
-            status.innerText = "Введіть логін та пароль";
-            return;
-        }
-
+        if (!user || !pass) { status.innerText = "Введіть дані"; return; }
         status.innerText = "⏳ Перевірка...";
         try {
-            const response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: "login", username: user, password: pass })
-            });
+            const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "login", username: user, password: pass }) });
             const result = await response.json();
-
             if (result.status === "success") {
-                currentUser = result.displayName;
+                currentUser = result.displayName; 
                 document.getElementById('loginArea').style.display = 'none';
                 document.getElementById('mainArea').style.display = 'block';
                 document.getElementById('userLabel').innerText = "👤 " + currentUser;
                 document.getElementById('barcodeInput').focus();
-            } else {
-                status.innerText = "❌ " + result.message;
-            }
-        } catch (e) {
-            status.innerText = "❌ Помилка з'єднання. Перевірте API URL.";
-        }
+            } else { status.innerText = "❌ " + result.message; }
+        } catch (e) { status.innerText = "❌ Помилка з'єднання"; }
     }
 
-    // --- РЕЖИМИ ---
-    function setMode(mode) {
-        currentMode = mode;
-        document.getElementById('modeOutbound').classList.toggle('active', mode === 'Відправка');
-        document.getElementById('modeInbound').classList.toggle('active', mode === 'Отримання');
-        scans = []; 
-        renderScans();
-        document.getElementById('errorDisplay').style.display = "none";
-        document.getElementById('statusLabel').innerText = "";
-    }
-
-    // --- СКАНУВАННЯ ---
-    function handleScan() {
-        const input = document.getElementById('barcodeInput');
-        let val = input.value.trim().toUpperCase();
-        if (!val) return;
-
-        const isBox = val.startsWith("BOX");
-        
-        if (currentMode === "Отримання" && !isBox) {
-            alert("Тільки BOX дозволено в режимі отримання!");
-            input.value = "";
-            return;
-        }
-
-        // Перевірка на дублікат
-        const isDuplicate = scans.some(s => s.value === val);
-
-        scans.push({ value: val, isBox: isBox, duplicate: isDuplicate });
-        input.value = "";
-        input.focus();
-        renderScans();
-    }
-
-	function renderScans() {
-    const list = document.getElementById('scanList');
-    list.innerHTML = "";
-    
-    scans.slice().reverse().forEach((item, index) => {
-        const realIdx = scans.length - 1 - index;
-        const div = document.createElement('div');
-        div.className = `scan-item ${item.duplicate ? 'duplicate' : ''}`;
-        
-        div.innerHTML = `
-            <div class="scan-info">
-                <span style="color: #999; font-size: 12px; min-width: 15px;">${realIdx + 1}</span>
-                <span style="font-weight: 600;">${item.value}</span>
-                <span class="scan-tag" style="background: ${item.isBox ? '#e7f1ff' : '#f0f0f0'}; color: ${item.isBox ? '#007bff' : '#666'};">
-                    ${item.isBox ? 'BOX' : 'ТТН'}
-                </span>
-            </div>
-            <button class="delete-btn" onclick="deleteScan(${realIdx})">✕</button>
-        `;
-        list.appendChild(div);
-    });
-    
-    const btn = document.getElementById('processBtn');
-    btn.disabled = scans.length === 0;
-    btn.innerText = `ОБРОБИТИ ВСЕ (${scans.length})`;
-	}
-
-    function deleteScan(idx) {
-        scans.splice(idx, 1);
-        // Перерахунок дублікатів
-        scans = scans.map((s, i) => {
-            s.duplicate = scans.slice(0, i).some(prev => prev.value === s.value);
-            return s;
-        });
-        renderScans();
-    }
-
-    // --- ВІДПРАВКА ---
-    async function submitData() {
-        const errBox = document.getElementById('errorDisplay');
-        const status = document.getElementById('statusLabel');
-        errBox.style.display = "none";
-        
-        let finalData = [];
-        let errors = [];
-
-        if (currentMode === "Відправка") {
-            for (let i = 0; i < scans.length; i++) {
-                if (scans[i].isBox) {
-                    let next = scans[i + 1];
-                    if (next && !next.isBox) {
-                        finalData.push({ box: scans[i].value, ttn: next.value, user: currentUser });
-                        i++; 
-                    } else { errors.push(`❗ BOX ${scans[i].value} без ТТН`); }
-                } else { errors.push(`❗ ТТН ${scans[i].value} без BOX`); }
-            }
-        } else {
-            finalData = scans.filter(s => s.isBox).map(s => ({ box: s.value, user: currentUser }));
-        }
-
-        if (scans.some(s => s.duplicate)) errors.push("❗ Видаліть дублікати!");
-
-        if (errors.length > 0) {
-            errBox.innerHTML = errors.join("<br>");
-            errBox.style.display = "block";
-            return;
-        }
-
-        status.innerText = "⏳ Надсилання...";
-        try {
-            const response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ mode: currentMode, data: finalData })
-            });
-            const result = await response.json();
-            if (result.status === "success") {
-                status.style.color = "green";
-                status.innerText = "✅ Успішно збережено!";
-                scans = [];
-                renderScans();
-            } else { alert("Помилка: " + result.message); }
-        } catch (e) { status.innerText = "❌ Помилка мережі"; }
-    }
-
-    document.getElementById('barcodeInput').onkeypress = (e) => { 
-        if (e.key === 'Enter') handleScan(); 
-    };
+    function setMode(mode){ 
+						currentMode = mode;
+						document.getElementById('modeOutbound').classList.toggle('active', mode === 'Відправка'); 
+						document.getElementById('modeInbound').classList.toggle('active', mode === 'Отримання');
+						// ОЧИЩЕННЯ ПРИ ПЕРЕМИКАННІ
+						const errBox = document.getElementById('errorDisplay');
+						errBox.style.display = 'none'; // Приховуємо червоний блок
+						errBox.innerHTML = '';         // Видаляємо текст помилок
+						document.getElementById('statusLabel').innerText = ''; // Очищуємо "Успішно"
+						scans = [];
+						renderScans(); 
+						}
+    function handleScan() { const input = document.getElementById('barcodeInput'); let val = input.value.replace(/%/g, "").trim().toUpperCase(); if (!val) return; const isBox = val.startsWith("BOX"); if (currentMode === "Отримання" && !isBox) { alert("Помилка: В режимі 'Отримання' скануйте тільки BOX!"); input.value = ""; return; } const isDuplicate = scans.some(s => s.value === val); scans.push({ value: val, isBox: isBox, duplicate: isDuplicate }); input.value = ""; input.focus(); renderScans(); }
+    function renderScans() {
+							const list = document.getElementById('scanList');
+							list.innerHTML = "";
+							scans.slice().reverse().forEach((item, index) => {
+								const realIdx = scans.length - index;
+								const div = document.createElement('div');
+								div.className = `scan-item ${item.duplicate ? 'duplicate' : ''}`;
+								
+								// Використовуємо класи scan-idx та scan-val для чіткого розділення
+								div.innerHTML = `
+									<div style="display: flex; align-items: center;">
+										<span class="scan-idx">${realIdx}</span>
+										<span style="font-weight: 600;">${item.value}</span>
+										<span class="scan-tag">${item.isBox ? 'BOX' : 'ТТН'}</span>
+									</div>
+									<button class="delete-btn" onclick="deleteScan(${scans.length - 1 - index})">✕</button>
+								`;
+								list.appendChild(div);
+							});
+							// Оновлення кнопки "ОБРОБИТИ" (залишаємо вашу логіку)
+							const btn = document.getElementById('processBtn');
+							btn.disabled = scans.length === 0;
+							btn.innerText = `ОБРОБИТИ ВСЕ (${scans.length})`;
+						}
+    function deleteScan(idx) { scans.splice(idx, 1); scans = scans.map((s, i) => { s.duplicate = scans.slice(0, i).some(prev => prev.value === s.value); return s; }); renderScans(); }
+    async function submitData() { 
+									const status = document.getElementById('statusLabel');
+									let finalData = []; 
+									let errors = []; 
+									if (currentMode === "Відправка") { 
+																	for (let i = 0; i < scans.length; i++) { if (scans[i].isBox) { let next = scans[i + 1]; 
+																	if (next && !next.isBox) { finalData.push({ box: scans[i].value, ttn: next.value, user: currentUser }); i++; } 
+																	else { errors.push(`❗ BOX ${scans[i].value} без ТТН`); } } 
+																	else { errors.push(`❗ ТТН ${scans[i].value} без BOX`); } } 
+																	} 
+									else { finalData = scans.filter(s => s.isBox).map(s => ({ box: s.value, user: currentUser })); } 
+									if (scans.some(s => s.duplicate)) errors.push("❗ Видаліть дублікати!");
+									if (errors.length > 0) {
+															const errBox = document.getElementById('errorDisplay');
+															errBox.innerHTML = errors.join("<br>"); 
+															errBox.style.display = "block"; 
+															return;
+															}
+									status.innerText = "⏳ Надсилання..."; try {
+																				const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ mode: currentMode, data: finalData }) });
+																				const result = await response.json(); 
+																				if (result.status === "success") {
+																													status.style.color = "green";
+																													status.innerText = "✅ Успішно!";
+																													scans = [];
+																													// ОЧИЩЕННЯ ПІСЛЯ УСПІШНОЇ ВІДПРАВКИ
+																													const errBox = document.getElementById('errorDisplay');
+																													errBox.style.display = 'none'; // Ховаємо блок, якщо раніше були помилки
+																													errBox.innerHTML = '';
+																													renderScans();
+																												}
+																				else { alert(result.message); } 
+																				} 
+									catch (e) { status.innerText = "❌ Помилка"; }
+								}
+    document.getElementById('barcodeInput').onkeypress = (e) => { if (e.key === 'Enter') handleScan(); };
 </script>
 </body>
 </html>
