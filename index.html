@@ -288,6 +288,7 @@
       line-height: 1.6;
       margin-bottom: 12px;
     }
+	
 
     /* ─── Status line ───────────────────────────────────── */
     .status-line {
@@ -328,6 +329,18 @@
       text-align: right;
       flex-shrink: 0;
     }
+	.finish-single-btn {
+      width: 22px; height: 22px;
+      border: none; background: transparent;
+      color: var(--green-text);
+      cursor: pointer;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s;
+      flex-shrink: 0;
+    }
+    .finish-single-btn:hover { background: var(--green-bg); }
+    .finish-single-btn svg { width: 14px; height: 14px; stroke: var(--green-text); }
 
     .scan-val {
       font-family: 'IBM Plex Mono', monospace;
@@ -528,10 +541,10 @@
   let currentUser = '';
   let scans = [];
   
-  // Додано для Маршрутів
+  // Додано для Маршрутів(автоматично відновлюється з пам'яті)
   let availableEmployees = [];
-  let activeRouteNum = "";
-  let activeLoaders = [];
+  let activeRouteNum = localStorage.getItem('local_route_num') || "";
+  let activeLoaders = JSON.parse(localStorage.getItem('local_loaders')) || [];
 
   /* ─── Print panel ────────────────────────────────────── */
   function togglePrint() {
@@ -611,6 +624,12 @@
         
         const initials = currentUser.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         document.getElementById('userAvatar').innerText = initials;
+		if (activeRouteNum) {
+          const routeInput = document.getElementById('routeInput');
+          routeInput.value = activeRouteNum;
+          routeInput.disabled = true;
+        }
+        renderRouteList();
         document.getElementById('barcodeInput').focus();
         clearFeedback();
       } else {
@@ -694,12 +713,16 @@
     const startStr = new Date().toLocaleTimeString('uk-UA', { hour12: false });
     activeLoaders.push({ name: empVal, start: startStr });
     
+    // [Додати сюди] Фіксуємо в пам'яті на випадок вимкнення світла
+    localStorage.setItem('local_route_num', activeRouteNum);
+    localStorage.setItem('local_loaders', JSON.stringify(activeLoaders));
+    
     // Скидаємо селект
     document.getElementById('employeeSelect').selectedIndex = 0;
     renderRouteList();
   }
 
-  function renderRouteList() {
+ function renderRouteList() {
     const list = document.getElementById('routeList');
     list.innerHTML = '';
     activeLoaders.forEach((loader, idx) => {
@@ -709,16 +732,76 @@
         <span class="scan-num">${idx + 1}</span>
         <span class="scan-val">${loader.name}</span>
         <span class="scan-tag tag-route">${loader.start}</span>
+        <button class="finish-single-btn" onclick="finishSingleLoader(${idx})" title="Завершити для цього співробітника">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
       `;
       list.appendChild(div);
     });
     
-    document.getElementById('finishRouteBtn').disabled = activeLoaders.length === 0;
+    // Головна кнопка тепер активна завжди, щоб можна було скинути порожній маршрут
+    document.getElementById('finishRouteBtn').disabled = false;
+    if (activeLoaders.length === 0 && !activeRouteNum) {
+      document.getElementById('finishRouteBtn').innerText = "Маршрут вільний";
+    } else {
+      document.getElementById('finishRouteBtn').innerText = "Закінчити маршрут";
+    }
+  }
+  // Завершення роботи ТІЛЬКИ ДЛЯ ОДНІЄЇ ЛЮДИНИ
+  async function finishSingleLoader(idx) {
+    clearFeedback();
+    const loader = activeLoaders[idx];
+    const endStr = new Date().toLocaleTimeString('uk-UA', { hour12: false });
+
+    const finalData = [{
+      route: activeRouteNum,
+      name: loader.name,
+      start: loader.start,
+      end: endStr
+    }];
+
+    showStatus(`Завершення для ${loader.name}...`);
+    try {
+      const res = await fetch(GOOGLE_SCRIPT_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ mode: 'Маршрути', data: finalData }) 
+      });
+      const result = await res.json();
+      
+      if (result.status === 'success') {
+        showStatus(`✓ ${loader.name} закінчив`, 'var(--green-text)');
+        
+        // Видаляємо саме цього співробітника зі списку
+        activeLoaders.splice(idx, 1);
+		localStorage.setItem('local_loaders', JSON.stringify(activeLoaders));
+        renderRouteList();
+      } else { 
+        showError(result.message); 
+      }
+    } catch { 
+      showError('Помилка з\'єднання'); 
+    }
   }
 
+  // Закриття маршруту для ВСІХ, ХТО ЗАЛИШИВСЯ (або очищення)
   async function finishRoute() {
-    if (activeLoaders.length === 0) return;
     clearFeedback();
+    
+    if (activeLoaders.length === 0) {
+      // Якщо людей більше немає, просто скидаємо блокування поля для нового маршруту
+      activeRouteNum = "";
+	  localStorage.removeItem('local_route_num');
+      localStorage.removeItem('local_loaders');
+      const routeInput = document.getElementById('routeInput');
+      routeInput.disabled = false;
+      routeInput.value = "";
+      showStatus('✓ Поле маршруту розблоковано', 'var(--text-2)');
+      renderRouteList();
+      return;
+    }
+
     const endStr = new Date().toLocaleTimeString('uk-UA', { hour12: false });
     
     const finalData = activeLoaders.map(l => ({
@@ -728,7 +811,7 @@
       end: endStr
     }));
 
-    showStatus('Закриття маршруту...');
+    showStatus('Закриття маршруту для всіх...');
     try {
       const res = await fetch(GOOGLE_SCRIPT_URL, { 
         method: 'POST', 
@@ -740,7 +823,8 @@
         showStatus('✓ Маршрут закрито', 'var(--green-text)');
         activeLoaders = [];
         activeRouteNum = "";
-        
+        localStorage.removeItem('local_route_num');
+        localStorage.removeItem('local_loaders');
         const routeInput = document.getElementById('routeInput');
         routeInput.disabled = false;
         routeInput.value = "";
